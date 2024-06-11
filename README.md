@@ -1,8 +1,13 @@
 # Xcode libarclite
 
+
 > 
 clang: error: SDK does not contain 'libarclite' at the path '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/arc/libarclite_iphonesimulator.a'; try increasing the minimum deployment target
 
+There are three solutions
+
+
+### Copy the missing files directly
 
 Copy the entire arc directory into your new Xcode directory
 
@@ -15,7 +20,19 @@ Copy the entire arc directory into your new Xcode directory
 ![image](./1.png)
 
 
-### XCode 15, iOS 17.0+
+### Change the iOS deployment target
+
+The issue is with the minimum OS version on the Cocoapods project. Just go on your project navigator and select the pods project:
+
+* Select all pods installed
+* Change the iOS deployment target to at least iOS 13
+
+It should work after that.
+![image](./2.png)
+
+
+
+### Modify the podfile, if using XCode 15, iOS 17.0+
 
 Apple staff mentions:
 
@@ -35,4 +52,7 @@ post_install do |installer|
   end
 end
 ```
+
+
+Good luck~
 
