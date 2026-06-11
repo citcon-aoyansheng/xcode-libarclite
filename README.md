@@ -1,58 +1,78 @@
-# Xcode libarclite
+# Xcode libarclite Fix — `SDK does not contain 'libarclite'`
 
-
-> 
-clang: error: SDK does not contain 'libarclite' at the path '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/arc/libarclite_iphonesimulator.a'; try increasing the minimum deployment target
-
-There are three solutions
-
-
-### Copy the missing files directly
-
-Copy the entire arc directory into your new Xcode directory
-
+Fix for the **`clang: error: SDK does not contain 'libarclite'`** build error that appears in **Xcode 15 / Xcode 16** when building iOS apps with CocoaPods, Flutter, or React Native.
 
 ```
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/
-
+clang: error: SDK does not contain 'libarclite' at the path
+'/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/arc/libarclite_iphonesimulator.a';
+try increasing the minimum deployment target
 ```
 
-![image](./1.png)
+> **Why this happens:** Apple removed `libarclite` from Xcode 15+. Any target (or Pod) that declares a **minimum deployment target below iOS 11** still tries to link it, and the build fails.
 
+This repo gives you **three fixes** — pick the one that matches your situation.
 
-### Change the iOS deployment target
+---
 
-The issue is with the minimum OS version on the Cocoapods project. Just go on your project navigator and select the pods project:
+## ✅ Fix 1 (Recommended): Bump the minimum deployment target
 
-* Select all pods installed
-* Change the iOS deployment target to at least iOS 13
+The cleanest fix. The error means *something* in your project still targets < iOS 11.
 
-It should work after that.
-![image](./2.png)
+- **CocoaPods:** Open the **Pods** project → select all targets → set **iOS Deployment Target** to **iOS 12** or higher.
+- **Your app:** In your main target's **Build Settings**, set **iOS Deployment Target** to **iOS 12+**.
 
+![Change the iOS deployment target](./2.png)
 
+---
 
-### Modify the podfile, if using XCode 15, iOS 17.0+
+## ✅ Fix 2: Auto-patch all Pods via Podfile
 
-Apple staff mentions:
+If you don't want to click through every Pod, add this to the **end of your `Podfile`**, then run `pod install`. It bumps every Pod target automatically:
 
-
-> libarclite was necessary for older OS versions, but is now obsolete. If you're encountering errors referring to this library, you should audit every target in your project for those that declare support for a minimum deployment target under iOS 11, and update them to at least iOS 11, or something more recent than that. You should not modify your Xcode installation to resolve this.
-
-
-In podfile: add these lines at the end of the file. This will automatically change all pods targets to iOS 11 after running pod install. You don't have to select each target step by step.
-
-
-```
+```ruby
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
-      config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "11.0"
+      config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "12.0"
     end
   end
 end
 ```
 
+> Apple's official guidance: *"libarclite was necessary for older OS versions, but is now obsolete. Audit every target for a minimum deployment target under iOS 11 and update them. You should not modify your Xcode installation to resolve this."*
 
-Good luck~
+---
 
+## ✅ Fix 3 (Quick & dirty): Drop the missing `libarclite` files back in
+
+When you **can't** change the deployment target (e.g. a locked old third-party SDK), restore the files Apple removed.
+
+Copy the [`arc/`](arc/) directory from this repo into your Xcode toolchain:
+
+```bash
+sudo cp -R arc /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/
+```
+
+![Copy the arc directory](./1.png)
+
+> ⚠️ This is a workaround, not a real fix — you'll need to re-copy after every Xcode update, and Apple recommends against it. Prefer Fix 1 or 2 when you can.
+
+---
+
+## Which fix should I use?
+
+| Situation | Use |
+|-----------|-----|
+| You control the deployment target | **Fix 1** |
+| Lots of CocoaPods dependencies | **Fix 2** |
+| A locked old SDK forces < iOS 11 | **Fix 3** |
+
+---
+
+## Keywords
+
+`libarclite` · `libarclite_iphonesimulator.a` · `SDK does not contain libarclite` · Xcode 15 · Xcode 16 · CocoaPods · Flutter · React Native · `IPHONEOS_DEPLOYMENT_TARGET` · iOS build error
+
+---
+
+⭐ **If this saved you time, please star the repo** — it helps others find the fix.
